@@ -3,6 +3,7 @@ import os
 from flask import Flask, render_template, request
 from flask_cors import CORS
 from helpers.MySQLDatabaseHandler import MySQLDatabaseHandler
+from decouple import config
 
 # ROOT_PATH for linking with all your files. 
 # Feel free to use a config.py or settings.py with a global export variable
@@ -12,7 +13,7 @@ os.environ['ROOT_PATH'] = os.path.abspath(os.path.join("..",os.curdir))
 # Don't worry about the deployment credentials, those are fixed
 # You can use a different DB name if you want to
 MYSQL_USER = "root"
-MYSQL_USER_PASSWORD = "admin"
+MYSQL_USER_PASSWORD = config('MY_SQL_PASS')
 MYSQL_PORT = 3306
 MYSQL_DATABASE = "kardashiandb"
 
@@ -43,4 +44,4 @@ def episodes_search():
     return sql_search(text)
 
 
-# app.run(debug=True)
+app.run(debug=True)
