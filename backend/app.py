@@ -15,7 +15,7 @@ os.environ['ROOT_PATH'] = os.path.abspath(os.path.join("..",os.curdir))
 MYSQL_USER = "root"
 MYSQL_USER_PASSWORD = config('MY_SQL_PASS')
 MYSQL_PORT = 3306
-MYSQL_DATABASE = "kardashiandb"
+MYSQL_DATABASE = "corkdorks"
 
 mysql_engine = MySQLDatabaseHandler(MYSQL_USER,MYSQL_USER_PASSWORD,MYSQL_PORT,MYSQL_DATABASE)
 
@@ -28,9 +28,15 @@ CORS(app)
 # Sample search, the LIKE operator in this case is hard-coded, 
 # but if you decide to use SQLAlchemy ORM framework, 
 # there's a much better and cleaner way to do this
-def sql_search(episode):
-    query_sql = f"""SELECT * FROM episodes WHERE LOWER( title ) LIKE '%%{episode.lower()}%%' limit 10"""
-    keys = ["id","title","descr"]
+def sql_search(country):
+    query_sql = f"""SELECT title FROM wine_data WHERE LOWER( country ) LIKE '%%{country.lower()}%%' limit 10"""
+    keys = ["title"]
+    data = mysql_engine.query_selector(query_sql)
+    return json.dumps([dict(zip(keys,i)) for i in data])
+
+def price_and_points(max_price, min_points):
+    query_sql = f'''SELECT TOP 3 title, price, points from wine_data WHERE price <= {max_price} AND points >= {min_points} ORDER BY points DESC'''
+    keys = ["title", "price", "points"]
     data = mysql_engine.query_selector(query_sql)
     return json.dumps([dict(zip(keys,i)) for i in data])
 
