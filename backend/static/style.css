@@ -1,30 +1,9 @@
-.full-body-container{
-    position: absolute;
-    top:0;
-    left:0;
-    right:0;
-    bottom:0;
-    width:100%;
-    height:100%;
-    display: flex;
-    justify-content: start;
+header{
     align-items: center;
-    flex-direction: column;
+
 }
 
-#google-c{
-    color:#4285F4;
+h1{
+    color: black;
+    align-items: center;
 }
-
-#google-s{
-    color:#DB4437;
-}
-
-#google-4{
-    color:	#F4B400;
-}
-
-#google-3{
-    color:	#4285F4;
-}
-
