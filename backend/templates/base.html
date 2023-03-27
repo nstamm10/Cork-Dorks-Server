@@ -7,17 +7,13 @@
 <body>
     <div class="full-body-container">
         <div class="top-text">
-            <div class="google-colors">
-                <h1 id="google-c">C</h1>
-                <h1 id="google-s">S</h1>
-                <h1 id="google-4">4</h1>
-                <h1 id="google-3">3</h1>
-                <h1 id="google-0-1">0</h1>
-                <h1 id="google-0-2">0</h1>
+            <h1>Cork Dorks Wine Recommender</h1>
+            <h3>Please enter some information below and we will show you a list of Wines that we believe you will enjoy.</h3>
+            <div class="input-box">
+                <input placeholder="Maximum Price" id="max_price" onkeyup="filterText()">
             </div>
-            <div class="input-box" onclick="sendFocus()">
-                <img src="{{ url_for('static', filename='images/mag.png') }}" />
-                <input placeholder="Search for a Keeping up with the Kardashians episode" id="filter-text-val" onkeyup="filterText()">
+            <div class="input-box">
+                <input placeholder="Points 1-100" id="min_points" onkeyup="filterText()">
             </div>
         </div>
         <div id="answer-box">
@@ -39,8 +35,10 @@
 
         function filterText(){
             document.getElementById("answer-box").innerHTML = ""
-            console.log(document.getElementById("filter-text-val").value)
-            fetch("/episodes?" + new URLSearchParams({ title: document.getElementById("filter-text-val").value }).toString())
+
+            console.log(document.getElementById("max_price").value)
+            console.log(document.getElementById("min_points").value)
+            fetch("/episodes?" + new URLSearchParams({ max_price: document.getElementById("max_price").value, min_points: document.getElementById("min_points").value}).toString())
             .then((response) => response.json())
             .then((x) => {
                 for (row in x) {
