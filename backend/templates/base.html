@@ -27,10 +27,9 @@
 
     <script>
 
-        function answerBoxTemplate(title,titleDesc){
+        function answerBoxTemplate(title){
             return `<div class=''>
                 <h3 class='episode-title'>${title}</h3>
-                <p class='episode-desc'>${titleDesc}</p>
             </div>`
         }
 
@@ -43,13 +42,13 @@
             console.log(document.getElementById("filter-text-val").value)
             fetch("/episodes?" + new URLSearchParams({ title: document.getElementById("filter-text-val").value }).toString())
             .then((response) => response.json())
-            .then((data) => data.forEach(row => {
-                
-                let tempDiv = document.createElement("div")
-                tempDiv.innerHTML = answerBoxTemplate(row.title,row.descr)
-                document.getElementById("answer-box").appendChild(tempDiv)
-            }));
-
+            .then((x) => {
+                for (row in x) {
+                    let tempDiv = document.createElement("div")
+                    tempDiv.innerHTML = answerBoxTemplate(x[row].title)
+                    document.getElementById("answer-box").appendChild(tempDiv)
+                }
+            });
         }
             
     </script>
