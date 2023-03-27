@@ -23,9 +23,11 @@
 
     <script>
 
-        function answerBoxTemplate(title){
+        function answerBoxTemplate(title, price, points){
             return `<div class=''>
-                <h3 class='episode-title'>${title}</h3>
+                <h3 class='episode-title'>Name: ${title}</h3>
+                <h3 class='price'>Price: ${price}</h3>
+                <h3 class='price'>Points: ${points}</h3>
             </div>`
         }
 
@@ -43,7 +45,7 @@
             .then((x) => {
                 for (row in x) {
                     let tempDiv = document.createElement("div")
-                    tempDiv.innerHTML = answerBoxTemplate(x[row].title)
+                    tempDiv.innerHTML = answerBoxTemplate(x[row].title, x[row].price, x[row].points)
                     document.getElementById("answer-box").appendChild(tempDiv)
                 }
             });
