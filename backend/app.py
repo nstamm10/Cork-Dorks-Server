@@ -35,7 +35,7 @@ def sql_search(country):
     return json.dumps([dict(zip(keys,i)) for i in data])
 
 def price_and_points(max_price, min_points):
-    query_sql = f'''SELECT TOP 3 title, price, points from wine_data WHERE price <= {max_price} AND points >= {min_points} ORDER BY points DESC'''
+    query_sql = f"""SELECT title, price, points FROM wine_data WHERE price <= {max_price} AND points >= {min_points} ORDER BY points DESC limit 3"""
     keys = ["title", "price", "points"]
     data = mysql_engine.query_selector(query_sql)
     return json.dumps([dict(zip(keys,i)) for i in data])
@@ -46,9 +46,11 @@ def home():
 
 @app.route("/episodes")
 def episodes_search():
-    text = request.args.get("title")
-    x = sql_search(text)
-    return x
+    price= request.args.get("max_price")
+    points= request.args.get("min_points")
+    pnp = price_and_points(price,points)
+    print(pnp)
+    return pnp
 
 
 app.run(debug=True)
