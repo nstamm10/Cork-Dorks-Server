@@ -27,6 +27,7 @@ class MySQLDatabaseHandler(object):
         conn = self.lease_connection()
         if type(query) == list:
             for i in query:
+                i = i.replace('%', '%%')
                 conn.execute(i)
         else:
             conn.execute(query)
