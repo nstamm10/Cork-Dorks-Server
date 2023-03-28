@@ -49,7 +49,6 @@ def episodes_search():
     price= request.args.get("max_price")
     points= request.args.get("min_points")
     pnp = price_and_points(price,points)
-    print(pnp)
     return pnp
 
 
