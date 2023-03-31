@@ -27,7 +27,7 @@ services:
         image: mysql:latest
         restart: always
         environment:
-                MYSQL_USER: root
+                MYSQL_USER: admin
                 MYSQL_PASSWORD: Tcc949799!!
                 MYSQL_DATABASE: corkdorks
                 MYSQL_ROOT_PASSWORD: Tcc949799!!
