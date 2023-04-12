@@ -23,14 +23,14 @@ services:
                                 - flask-network
         command: gunicorn --bind 0.0.0.0:5000 --workers 4 "app:app"
     db:
-        container_name: ${TEAM_NAME}_db
+        container_name: corkdorks_db
         image: mysql:latest
         restart: always
         environment:
-                MYSQL_USER: root
-                MYSQL_PASSWORD: ${MY_SQL_PASS}
+                MYSQL_USER: admin
+                MYSQL_PASSWORD: Tcc949799!!
                 MYSQL_DATABASE: corkdorks
-                MYSQL_ROOT_PASSWORD: ${MY_SQL_PASS}
+                MYSQL_ROOT_PASSWORD: Tcc949799!!
         volumes:
                 - ./init.sql:/docker-entrypoint-initdb.d/init.sql
         networks:
