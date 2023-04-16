@@ -4,6 +4,7 @@ from flask import Flask, render_template, request
 from flask_cors import CORS
 from helpers.MySQLDatabaseHandler import MySQLDatabaseHandler
 from decouple import config
+from nltk.tokenize import TreebankWordTokenizer
 
 # ROOT_PATH for linking with all your files. 
 # Feel free to use a config.py or settings.py with a global export variable
@@ -50,6 +51,88 @@ def episodes_search():
     points= request.args.get("min_points")
     pnp = price_and_points(price,points)
     return pnp
+
+'''
+Returns inverted index representation of wine descriptions
+Returns dictionary of the form: {term : [(wine_title, count), ...]}
+'''
+def description_inverted_index():
+    # Fetching Data
+    query_sql = f"""SELECT title, description FROM wine_data"""
+    keys = ["title", "description"]
+    data = mysql_engine.query_selector(query_sql)
+    input_dict = json.loads(json.dumps([dict(zip(keys,i)) for i in data]))
+    tokenizer = TreebankWordTokenizer()
+    for i in range(len(input_dict)):
+        input_dict[i]["description"] = tokenizer.tokenize(input_dict[i]["description"])
+        input_dict[i]["description"] = [x.lower() for x in input_dict[i]["description"]]
+    
+    titles = [x['title'] for x in input_dict]
+    title_dict = {k : v for k, v in enumerate(titles)}
+    # Building Inverted Index
+    dic = {}
+    for i in range(len(input_dict)):
+        for tok in input_dict[i]['description']:
+            if tok not in dic.keys():
+                dic[tok] = {i : 1}
+            else:
+                if i not in dic[tok].keys():
+                    dic[tok][i] = 1
+                else:
+                    dic[tok][i] += 1
+        
+    inv_index = {}
+    for tok in dic.keys():
+        inv_index[tok] = []
+        for k, v in dic[tok].items():
+            inv_index[tok].append((k, v))
+        inv_index[tok].sort(key = lambda tup : tup[0])
+    return inv_index, title_dict
+
+description = description_inverted_index()
+
+'''
+Returns sorted wine titles by number of or_words contained in titles description. If
+wine title contains 0 'or_words', title is not in list.
+'''
+def boolean_search(or_words, description):
+    inv_index = description[0]
+    title_dict = description[1]
+    tokenizer = TreebankWordTokenizer()
+    or_words = or_words.lower()
+    or_words = tokenizer.tokenize(or_words)
+    postings = inv_index[or_words[0]]
+    for i in range(1, len(or_words)):
+        current_lst = inv_index[or_words[i]]
+        postings = or_merge_postings(postings, current_lst)
+    title_postings = []
+    for posting in postings:
+        title_postings.append((title_dict[posting[0]], posting[1]))
+    title_postings.sort(key = lambda tup : tup[1], reverse=True)
+    return title_postings
+    
+def or_merge_postings(lst1, lst2):
+    p1, p2 = 0, 0
+    output = []
+    while p1 < len(lst1) and p2 < len(lst2):
+        if lst1[p1][0] > lst2[p2][0]:
+            output.append(lst2[p2])
+            p2 += 1
+        elif lst1[p1][0] < lst2[p2][0]:
+            output.append(lst1[p1])
+            p1 += 1
+        else:
+            count = lst1[p1][1] + lst2[p2][1]
+            output.append((lst1[p1][0], count))
+            p1 += 1
+            p2 += 1
+    while p2 < len(lst2):
+        output.append(lst2[p2])
+        p2 += 1
+    while p1 < len(lst1):
+        output.apend(lst1[p1])
+        p1 += 1
+    return output
 
 
 app.run(debug=True)
