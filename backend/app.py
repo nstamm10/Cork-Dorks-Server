@@ -56,9 +56,9 @@ def episodes_search():
 Returns inverted index representation of wine descriptions
 Returns dictionary of the form: {term : [(wine_title, count), ...]}
 '''
-def description_inverted_index():
+def description_inverted_index(price=1000):
     # Fetching Data
-    query_sql = f"""SELECT title, description FROM wine_data"""
+    query_sql = f"""SELECT title, description FROM wine_data WHERE price <= {price}"""
     keys = ["title", "description"]
     data = mysql_engine.query_selector(query_sql)
     input_dict = json.loads(json.dumps([dict(zip(keys,i)) for i in data]))
@@ -89,8 +89,6 @@ def description_inverted_index():
         inv_index[tok].sort(key = lambda tup : tup[0])
     return inv_index, title_dict
 
-description = description_inverted_index()
-
 '''
 Returns sorted wine titles by number of or_words contained in titles description. If
 wine title contains 0 'or_words', title is not in list.
@@ -109,7 +107,7 @@ def boolean_search(or_words, description):
     for posting in postings:
         title_postings.append((title_dict[posting[0]], posting[1]))
     title_postings.sort(key = lambda tup : tup[1], reverse=True)
-    return title_postings
+    return list(zip(*title_postings[:5]))[0]
     
 def or_merge_postings(lst1, lst2):
     p1, p2 = 0, 0
@@ -133,6 +131,16 @@ def or_merge_postings(lst1, lst2):
         output.apend(lst1[p1])
         p1 += 1
     return output
+
+@app.route("/description")
+def description_search(price, query):
+    inv_index = description_inverted_index(price)
+    titles = boolean_search(query, inv_index)
+    query_sql = f"""SELECT * FROM wine_data WHERE title in {titles}"""
+    keys = ["country", "description", "designation", "points", "price", "province",
+            "region_1", "region_2", "title", "variety", "winery"]
+    data = mysql_engine.query_selector(query_sql)
+    return json.dumps([dict(zip(keys,i)) for i in data])
 
 
 app.run(debug=True)
