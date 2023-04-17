@@ -10,11 +10,12 @@
             <h1>Cork Dorks Wine Recommender</h1>
             <h3>Please enter some information below and we will show you a list of Wines that we believe you will enjoy.</h3>
             <div class="input-box">
-                <input placeholder="Maximum Price" id="max_price" onkeyup="filterText()">
+                <input placeholder="(earthy, full-bodied, etc.)" id="description" size="50">
             </div>
             <div class="input-box">
-                <input placeholder="Points 1-100" id="min_points" onkeyup="filterText()">
+                <input placeholder="Maximum Price" id="max_price" onkeyup="filterText()">
             </div>
+            
         </div>
         <div id="answer-box">
 
@@ -39,8 +40,8 @@
             document.getElementById("answer-box").innerHTML = ""
 
             console.log(document.getElementById("max_price").value)
-            console.log(document.getElementById("min_points").value)
-            fetch("/episodes?" + new URLSearchParams({ max_price: document.getElementById("max_price").value, min_points: document.getElementById("min_points").value}).toString())
+            console.log(document.getElementById("description").value)
+            fetch("/description?" + new URLSearchParams({ max_price: document.getElementById("max_price").value, description: document.getElementById("description").value}).toString())
             .then((response) => response.json())
             .then((x) => {
                 for (row in x) {
