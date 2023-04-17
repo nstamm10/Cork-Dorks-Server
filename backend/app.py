@@ -128,7 +128,7 @@ def or_merge_postings(lst1, lst2):
         output.append(lst2[p2])
         p2 += 1
     while p1 < len(lst1):
-        output.apend(lst1[p1])
+        output.append(lst1[p1])
         p1 += 1
     return output
 
