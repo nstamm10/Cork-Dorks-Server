@@ -133,7 +133,9 @@ def or_merge_postings(lst1, lst2):
     return output
 
 @app.route("/description")
-def description_search(price, query):
+def description_search():
+    price= request.args.get("max_price")
+    query= request.args.get("description")
     inv_index = description_inverted_index(price)
     titles = boolean_search(query, inv_index)
     query_sql = f"""SELECT * FROM wine_data WHERE title in {titles}"""
