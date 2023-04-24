@@ -62,23 +62,71 @@ def episodes_search():
 Returns inverted index representation of wine descriptions
 Returns dictionary of the form: {term : [(wine_title, count), ...]}
 '''
-def description_inverted_index(price=1000):
+def description_inverted_index(price=None, minpoint = None, country = None, region = None, winery = None, variety = None):
     # Fetching Data
-    query_sql = f"""SELECT title, description FROM wine_data WHERE price <= {price}"""
-    keys = ["title", "description"]
+    query_sql = f"""SELECT title, description, country, designation, province,region_1,region_2,variety,winery 
+    FROM wine_data"""
+    where_statement = ""
+
+    if price:
+        where_statement += f""" WHERE price <= {price}"""
+    
+    if minpoint:
+        if where_statement.isEmpty():
+            where_statement += f""" WHERE price >= {minpoint}"""
+        else: 
+            where_statement += f""" AND price >= {minpoint}"""
+
+    if country:
+        if where_statement.isEmpty():
+            where_statement += f""" WHERE country = {country}"""
+        else: 
+            where_statement += f""" AND country = {country}"""
+
+    if region:
+        if where_statement.isEmpty():
+            where_statement += f""" WHERE region = {region}"""
+        else: 
+            where_statement += f""" AND region = {region}"""
+    
+    if winery:
+        if where_statement.isEmpty():
+            where_statement += f""" WHERE winery = {winery}"""
+        else: 
+            where_statement += f""" AND winery = {winery}"""
+
+    if variety:
+        if where_statement.isEmpty():
+            where_statement += f""" WHERE variety = {variety}"""
+        else: 
+            where_statement += f""" AND variety = {variety}"""
+
+    query_sql += where_statement
+
     data = mysql_engine.query_selector(query_sql)
-    input_dict = json.loads(json.dumps([dict(zip(keys,i)) for i in data]))
+    lst =[]
+    for i in data:
+        dict = {}
+        words = ""
+        for j in i:
+            if j:
+                words+=(" "+j)
+        dict["title"] = i[0]
+        dict["description_words"] = words
+        lst.append(dict)
+   
+    input_dict = json.loads(json.dumps(lst))
     tokenizer = TreebankWordTokenizer()
     for i in range(len(input_dict)):
-        input_dict[i]["description"] = tokenizer.tokenize(input_dict[i]["description"])
-        input_dict[i]["description"] = [x.lower() for x in input_dict[i]["description"]]
+        input_dict[i]["description_words"] = tokenizer.tokenize(input_dict[i]["description_words"])
+        input_dict[i]["description_words"] = [x.lower() for x in input_dict[i]["description_words"]]
     
     titles = [x['title'] for x in input_dict]
     title_dict = {k : v for k, v in enumerate(titles)}
     # Building Inverted Index
     dic = {}
     for i in range(len(input_dict)):
-        for tok in input_dict[i]['description']:
+        for tok in input_dict[i]['description_words']:
             if tok not in dic.keys():
                 dic[tok] = {i : 1}
             else:
