@@ -4,7 +4,13 @@ from flask import Flask, render_template, request
 from flask_cors import CORS
 from helpers.MySQLDatabaseHandler import MySQLDatabaseHandler
 from decouple import config
+import nltk
 from nltk.tokenize import TreebankWordTokenizer
+from nltk.corpus import wordnet as wn
+from nltk.tokenize import word_tokenize
+from nltk.corpus import stopwords
+import re
+import ssl
 
 # ROOT_PATH for linking with all your files. 
 # Feel free to use a config.py or settings.py with a global export variable
@@ -132,10 +138,120 @@ def or_merge_postings(lst1, lst2):
         p1 += 1
     return output
 
+def download_packages():
+    try:
+        _create_unverified_https_context = ssl._create_unverified_context
+    except AttributeError:
+        pass
+    else:
+        ssl._create_default_https_context = _create_unverified_https_context
+    nltk.download('wordnet')
+    nltk.download('punkt')
+    nltk.download('stopwords')
+    nltk.download('averaged_perceptron_tagger')
+download_packages()
+
+def tokenizer(sentence):
+    return word_tokenize(sentence)
+
+def pos_tagger(tokens):
+    return nltk.pos_tag(tokens)
+
+def stopword_treatment(tokens):
+    stopword = stopwords.words('english')
+    res = []
+    for tok in tokens:
+        if tok[0].lower() not in stopword:
+            res.append(tuple([tok[0].lower(), tok[1]]))
+    return res
+
+pos_tag_map = {
+    'NN': [ wn.NOUN ],
+    'JJ': [ wn.ADJ, wn.ADJ_SAT ],
+    'RB': [ wn.ADV ],
+    'VB': [ wn.VERB ]
+}
+
+def pos_tag_convert(pos_tag):
+    root = pos_tag[0:2]
+    try:
+        pos_tag_map[root]
+        return pos_tag_map[root]
+    except KeyError:
+        return ''
+    
+def get_synsets(tokens):
+    synsets = []
+    for tok in tokens:
+        pos_tag = pos_tag_convert(tok[1])
+        if pos_tag == '':
+            continue
+        else:
+            synsets.append(wn.synsets(tok[0], pos_tag))
+    return synsets
+
+def get_synset_toks(synsets):
+    tokens = {}
+    for synset in synsets:
+        for s in synset:
+            if s.name() in tokens:
+                tokens[s.name().split('.')[0]] += 1
+            else:
+                tokens[s.name().split('.')[0]] = 1
+    return tokens
+
+def get_hypernyms(synsets):
+    hypernyms = []
+    for synset in synsets:
+        for s in synset:
+            hypernyms.append(s.hypernyms())
+    return hypernyms
+
+def get_hypernym_toks(hypernyms):
+    tokens = {}
+    for hypernym in hypernyms:
+        for h in hypernyms:
+            for hh in h:
+                if hh.name().split('.')[0] in tokens:
+                    tokens[hh.name().split('.')[0]] += 1
+                else:
+                    tokens[hh.name().split('.')[0]] = 1
+    return tokens
+
+def underscore(tokens):
+    new_toks = {}
+    for k in tokens.keys():
+        x = re.sub(r'_', ' ', k)
+        new_toks[x] = tokens[k]
+    return new_toks
+
+def query_expansion(query):
+    tokens = tokenizer(query)
+    tokens = pos_tagger(tokens)
+    tokens = stopword_treatment(tokens)
+    
+    synsets = get_synsets(tokens)
+    synoynms = get_synset_toks(synsets)
+    synoynms = underscore(synoynms)
+
+    hypernyms = get_hypernyms(synsets)
+    hypernyms = get_hypernym_toks(hypernyms)
+    hypernyms = underscore(hypernyms)
+
+    expanded = {**synoynms, **hypernyms}
+    expanded = list(expanded.keys())
+    tokenized_original = TreebankWordTokenizer().tokenize(query)
+    for tok in tokenized_original:
+        if tok not in expanded:
+            expanded.append(tok)
+
+    return expanded
+
 @app.route("/description")
 def description_search():
     price= request.args.get("max_price")
     query= request.args.get("description")
+    expanded_query = query_expansion(query)
     inv_index = description_inverted_index(price)
     titles = boolean_search(query, inv_index)
     query_sql = f"""SELECT * FROM wine_data WHERE title in {titles}"""
