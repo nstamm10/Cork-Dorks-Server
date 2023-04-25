@@ -11,6 +11,7 @@ from nltk.tokenize import word_tokenize
 from nltk.corpus import stopwords
 import re
 import ssl
+import requests
 
 # ROOT_PATH for linking with all your files. 
 # Feel free to use a config.py or settings.py with a global export variable
@@ -23,6 +24,7 @@ MYSQL_USER = "root"
 MYSQL_USER_PASSWORD = config('MY_SQL_PASS')
 MYSQL_PORT = 3306
 MYSQL_DATABASE = "corkdorks"
+KEY = 'acfa3a9e02eb4fe98c201ddb70f3333b'
 
 mysql_engine = MySQLDatabaseHandler(MYSQL_USER,MYSQL_USER_PASSWORD,MYSQL_PORT,MYSQL_DATABASE)
 
@@ -113,7 +115,7 @@ def boolean_search(or_words, description):
     for posting in postings:
         title_postings.append((title_dict[posting[0]], posting[1]))
     title_postings.sort(key = lambda tup : tup[1], reverse=True)
-    return list(zip(*title_postings[:5]))[0]
+    return list(zip(*title_postings[:3]))[0]
     
 def or_merge_postings(lst1, lst2):
     p1, p2 = 0, 0
@@ -253,12 +255,21 @@ def description_search():
     query= request.args.get("description")
     expanded_query = query_expansion(query)
     inv_index = description_inverted_index(price)
-    titles = boolean_search(query, inv_index)
+    titles = boolean_search(expanded_query, inv_index)
     query_sql = f"""SELECT * FROM wine_data WHERE title in {titles}"""
     keys = ["country", "description", "designation", "points", "price", "province",
             "region_1", "region_2", "title", "variety", "winery"]
     data = mysql_engine.query_selector(query_sql)
-    return json.dumps([dict(zip(keys,i)) for i in data])
+    dic = [dict(zip(keys,i)) for i in data]
+    for wine in dic:
+        variety = wine['variety']
+        url = f"https://api.spoonacular.com/food/wine/dishes?apiKey={KEY}&wine={variety}"
+        response = requests.get(url)
+        try:
+            wine['pairing'] = response['pairings'][0]
+        except KeyError:
+            wine['pairing'] = 'No Pairing Found'      
+    return json.dumps(dic)
 
 
 app.run(debug=True)
