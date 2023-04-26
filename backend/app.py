@@ -152,9 +152,9 @@ wine title contains 0 'or_words', title is not in list.
 def boolean_search(or_words, description):
     inv_index = description[0]
     title_dict = description[1]
-    tokenizer = TreebankWordTokenizer()
-    or_words = or_words.lower()
-    or_words = tokenizer.tokenize(or_words)
+    # tokenizer = TreebankWordTokenizer()
+    # or_words = or_words.lower()
+    # or_words = tokenizer.tokenize(or_words)
     postings = inv_index[or_words[0]]
     for i in range(1, len(or_words)):
         current_lst = inv_index[or_words[i]]
@@ -314,7 +314,7 @@ def description_search():
         url = f"https://api.spoonacular.com/food/wine/dishes?apiKey={KEY}&wine={variety}"
         response = requests.get(url)
         try:
-            wine['pairing'] = response['pairings'][0]
+            wine['pairing'] = json.loads(response.text)['pairings'][0]
         except KeyError:
             wine['pairing'] = 'No Pairing Found'      
     return json.dumps(dic)
