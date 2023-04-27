@@ -3,7 +3,7 @@ services:
     backend_flask_app:
         container_name: corkdorks_backend_app
         ports:
-                - 0.0.0.0:4506:5000
+                - 0.0.0.0:4506
         restart: always
         build:
                 context: ./backend
