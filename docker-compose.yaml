@@ -22,7 +22,7 @@ services:
                                 - flask-network
         command: gunicorn --bind 0.0.0.0:5000 --workers 4 "app:app"
     db:
-        container_name: corkdorks_db
+        container_name: corkdorks
         image: mysql:latest
         restart: always
         environment:
