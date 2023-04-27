@@ -27,9 +27,9 @@ services:
         restart: always
         environment:
                 MYSQL_USER: admin
-                MYSQL_PASSWORD: Tcc949799!!
+                MYSQL_PASSWORD: admin
                 MYSQL_DATABASE: corkdorks
-                MYSQL_ROOT_PASSWORD: Tcc949799!!
+                MYSQL_ROOT_PASSWORD: admin
         volumes:
                 - flask_volume:/var/lib/mysql
                 - ./init.sql:/docker-entrypoint-initdb.d/init.sql
