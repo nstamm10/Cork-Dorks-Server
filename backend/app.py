@@ -331,7 +331,7 @@ def rationale(query_words,wine_info,price=None, minpoint = None, country = None,
         ans += ", is from "+str(winery)
     if variety:
         ans += ", and is of the "+str(variety)+" variety."
-        
+    
     return ans
 
 
@@ -357,8 +357,7 @@ def description_search():
         except KeyError:
             wine['pairing'] = 'No Pairing Found'     
 
-        reasoning = rationale(expanded_query,wine,price)
-        wine['rationale'] = reasoning
+        wine['rationale'] = rationale(expanded_query,wine,price)
     return json.dumps(dic)
 
 
