@@ -331,9 +331,8 @@ def cosine_sim(query):
     results = sorted(zip(titles, cosine_similarities), key=lambda x: round(x[1]*100,3), reverse=True)[:10]
     print(results)
     return results
-
-    print(doc_dict)
     '''
+    print(doc_dict)
     tfidf_vectorizer = TfidfVectorizer()
     tfidf_matrix = tfidf_vectorizer.fit_transform(docs)
 
@@ -352,6 +351,7 @@ def cosine_sim(query):
         doc['cosine_similarity'] = score
     print(f'here are the top docs{top_docs}')
     return top_docs
+    '''
 
 #return string which represents rationale for selected wine
 #Assumes that the given wine WAS SUCCESFULLY matched
