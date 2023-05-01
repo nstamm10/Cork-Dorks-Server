@@ -10,8 +10,13 @@ from nltk.corpus import wordnet as wn
 from nltk.tokenize import word_tokenize
 from nltk.corpus import stopwords
 import re
+import string
 import ssl
 import requests
+from sklearn.metrics.pairwise import cosine_similarity
+from sklearn.feature_extraction.text import TfidfVectorizer
+
+
 
 # ROOT_PATH for linking with all your files. 
 # Feel free to use a config.py or settings.py with a global export variable
@@ -297,11 +302,70 @@ def query_expansion(query):
 
     return expanded
 
+ 
+#query_expansion(query) expanded input query
+#doc_dict.values() doc query
+#compute cosine_sim(expanded_query, doc_dict.values)
+def cosine_sim(query):
+    query_sql = f"""SELECT * FROM wine_data"""
+    keys = ["country", "description", "designation", "points", "price", "province", "region_1", "region_2", "title", "variety", "winery"]
+    data = mysql_engine.query_selector(query_sql)
+
+    #{title:words} dict
+    doc_dict = {}
+    for doc in data:
+        doc_text = f"{doc['description']} {doc['designation']} {doc['points']} {doc['price']} {doc['province']} {doc['region_1']} {doc['region_2']} {doc['variety']} {doc['winery']}"
+        doc_tokens = [word for word in TreebankWordTokenizer().tokenize(doc_text) if word not in string.punctuation and not word.isdigit()]
+        doc_dict[doc['title']] = doc_tokens
+
+    docs = [" ".join(doc_dict[title]) for title in doc_dict.keys()]
+    tfidf_vectorizer = TfidfVectorizer()
+    tfidf_matrix = tfidf_vectorizer.fit_transform(docs)
+
+    # Compute cosine similarity between query and document vectors
+    query_vec = tfidf_vectorizer.transform([' '.join(query)])
+    cosine_similarities = cosine_similarity(query_vec, tfidf_matrix)
+
+    # Get titles and corresponding cosine similarities
+    titles = list(doc_dict.keys())
+    cosine_similarities = cosine_similarities[0]
+    
+    # Sort results by cosine similarity in descending order
+    results = sorted(zip(titles, cosine_similarities), key=lambda x: round(x[1]*100,3), reverse=True)[:10]
+    print(results)
+    return results
+
+    print(doc_dict)
+    '''
+    tfidf_vectorizer = TfidfVectorizer()
+    tfidf_matrix = tfidf_vectorizer.fit_transform(docs)
+
+    # Compute TF-IDF vector of query
+    query_vector = tfidf_vectorizer.transform([query])
+
+    # Compute cosine similarity between query vector and each document vector
+    similarities = cosine_similarity(query_vector, tfidf_matrix)[0]
+    
+    top_docs_indices = similarities.argsort()[::-1][:10]
+    top_docs = [data[i] for i in top_docs_indices]
+    cosine_similarities = similarities[top_docs_indices]
+    
+    # Add the cosine similarity score to each document
+    for doc, score in zip(top_docs, cosine_similarities):
+        doc['cosine_similarity'] = score
+    print(f'here are the top docs{top_docs}')
+    return top_docs
+
+'''
+
+
 @app.route("/description")
 def description_search():
     price= request.args.get("max_price")
-    query= request.args.get("description")
+    query = request.args.get("description")
     expanded_query = query_expansion(query)
+    cos_sim = cosine_sim(expanded_query)
+    #print(cos_sim)
     inv_index = description_inverted_index(price)
     titles = boolean_search(expanded_query, inv_index)
     query_sql = f"""SELECT * FROM wine_data WHERE title in {titles}"""
