@@ -13,6 +13,7 @@ import re
 import string
 import ssl
 import requests
+import itertools
 from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.feature_extraction.text import TfidfVectorizer
 
@@ -160,13 +161,16 @@ def boolean_search(or_words, description):
   
     postings = inv_index[or_words[0]]
     for i in range(1, len(or_words)):
-        current_lst = inv_index[or_words[i]]
-        postings = or_merge_postings(postings, current_lst)
+        try:
+            current_lst = inv_index[or_words[i]]
+            postings = or_merge_postings(postings, current_lst)
+        except KeyError:
+            pass
     title_postings = []
     for posting in postings:
         title_postings.append((title_dict[posting[0]], posting[1]))
-    title_postings.sort(key = lambda tup : tup[1], reverse=True)
-    return list(zip(*title_postings[:3]))[0]
+    titles = [val[0] for val in title_postings if val[1] > 0]
+    return titles
     
 def or_merge_postings(lst1, lst2):
     p1, p2 = 0, 0
@@ -297,14 +301,14 @@ def query_expansion(query):
     for tok in tokenized_original:
         if tok not in expanded:
             expanded.append(tok)
-
     return expanded
   
 #query_expansion(query) expanded input query
 #doc_dict.values() doc query
 #compute cosine_sim(expanded_query, doc_dict.values)
-def cosine_sim(query):
-    query_sql = f"""SELECT * FROM wine_data"""
+def cosine_sim(query, titles):
+    print(titles)
+    query_sql = f"""SELECT * FROM wine_data WHERE title in {titles}"""
     keys = ["country", "description", "designation", "points", "price", "province", "region_1", "region_2", "title", "variety", "winery"]
     data = mysql_engine.query_selector(query_sql)
 
@@ -328,30 +332,10 @@ def cosine_sim(query):
     cosine_similarities = cosine_similarities[0]
     
     # Sort results by cosine similarity in descending order
-    results = sorted(zip(titles, cosine_similarities), key=lambda x: round(x[1]*100,3), reverse=True)[:10]
-    print(results)
-    return results
-    '''
-    print(doc_dict)
-    tfidf_vectorizer = TfidfVectorizer()
-    tfidf_matrix = tfidf_vectorizer.fit_transform(docs)
-
-    # Compute TF-IDF vector of query
-    query_vector = tfidf_vectorizer.transform([query])
-
-    # Compute cosine similarity between query vector and each document vector
-    similarities = cosine_similarity(query_vector, tfidf_matrix)[0]
-    
-    top_docs_indices = similarities.argsort()[::-1][:10]
-    top_docs = [data[i] for i in top_docs_indices]
-    cosine_similarities = similarities[top_docs_indices]
-    
-    # Add the cosine similarity score to each document
-    for doc, score in zip(top_docs, cosine_similarities):
-        doc['cosine_similarity'] = score
-    print(f'here are the top docs{top_docs}')
-    return top_docs
-    '''
+    results = sorted(zip(titles, cosine_similarities), key=lambda x: round(x[1]*100,3), reverse=True)[:3]
+    output_titles = [val[0] for val in results]
+    print(output_titles)
+    return output_titles
 
 #return string which represents rationale for selected wine
 #Assumes that the given wine WAS SUCCESFULLY matched
@@ -398,10 +382,9 @@ def description_search():
     price= request.args.get("max_price")
     query = request.args.get("description")
     expanded_query = query_expansion(query)
-    cos_sim = cosine_sim(expanded_query)
-    #print(cos_sim)
     inv_index = description_inverted_index(price)
     titles = boolean_search(expanded_query, inv_index)
+    cos_sim = cosine_sim(expanded_query, titles) 
     query_sql = f"""SELECT * FROM wine_data WHERE title in {titles}"""
     keys = ["country", "description", "designation", "points", "price", "province",
             "region_1", "region_2", "title", "variety", "winery"]
