@@ -335,7 +335,7 @@ def cosine_sim(query, titles):
     cosine_similarities = cosine_similarities[0]
     
     # Sort results by cosine similarity in descending order
-    results = sorted(zip(titles, cosine_similarities), key=lambda x: round(x[1]*100,3), reverse=True)[:3]
+    results = sorted(zip(titles, cosine_similarities), key=lambda x: round(x[1]*100,3), reverse=True)[:2]
     output_titles = [val[0] for val in results]
     return output_titles
 
