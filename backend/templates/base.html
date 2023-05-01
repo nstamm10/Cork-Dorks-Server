@@ -5,52 +5,54 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Kanit&family=Montserrat&family=Open+Sans:wght@500&display=swap" rel="stylesheet">
 <body>
-    <div class="full-body-container">
+    <main>
         <div class="top-text">
             <h1>Cork Dorks Wine Recommender</h1>
             <h3>Please enter some information below and we will show you a list of Wines that we believe you will enjoy.</h3>
+        </div>
+        <div class="full-body-container">           
             <div class="input-box">
                 <input placeholder="(earthy, full-bodied, etc.)" id="description" size="50">
             </div>
             <div class="input-box">
-                <input placeholder="Maximum Price" id="max_price" onkeyup="filterText()">
+                <input placeholder="Maximum Price" id="max_price">
             </div>
+            <div class="submit">
+                <input type="button" value="Search" onclick="filterText()">
+            </div>           
+            <div id="answer-box">
+                <script>
+    
+                    function answerBoxTemplate(title, price, points){
+                        return `<div class='answers'>
+                            <h3 class='episode-title'>Name: ${title}</h3>
+                            <h3 class='price'>Price: ${price}</h3>
+                            <h3 class='price'>Points: ${points}</h3>
+                        </div>`
+                    }
             
-        </div>
-        <div id="answer-box">
-
-        </div>
-    </div>
-
-    <script>
-
-        function answerBoxTemplate(title, price, points){
-            return `<div class=''>
-                <h3 class='episode-title'>Name: ${title}</h3>
-                <h3 class='price'>Price: ${price}</h3>
-                <h3 class='price'>Points: ${points}</h3>
-            </div>`
-        }
-
-        function sendFocus(){
-            document.getElementById('filter-text-val').focus()
-        }
-
-        function filterText(){
-            document.getElementById("answer-box").innerHTML = ""
-
-            console.log(document.getElementById("max_price").value)
-            console.log(document.getElementById("description").value)
-            fetch("/description?" + new URLSearchParams({ max_price: document.getElementById("max_price").value, description: document.getElementById("description").value}).toString())
-            .then((response) => response.json())
-            .then((x) => {
-                for (row in x) {
-                    let tempDiv = document.createElement("div")
-                    tempDiv.innerHTML = answerBoxTemplate(x[row].title, x[row].price, x[row].points)
-                    document.getElementById("answer-box").appendChild(tempDiv)
-                }
-            });
-        }
+                    function sendFocus(){
+                        document.getElementById('filter-text-val').focus()
+                    }
             
-    </script>
+                    function filterText(){
+                        document.getElementById("answer-box").innerHTML = ""
+            
+                        console.log(document.getElementById("max_price").value)
+                        console.log(document.getElementById("description").value)
+                        fetch("/description?" + new URLSearchParams({ max_price: document.getElementById("max_price").value, description: document.getElementById("description").value}).toString())
+                        .then((response) => response.json())
+                        .then((x) => {
+                            for (row in x) {
+                                let tempDiv = document.createElement("div",row)
+                                tempDiv.innerHTML = answerBoxTemplate(x[row].title, x[row].price, x[row].points)
+                                document.getElementById("answer-box").appendChild(tempDiv)
+                            }
+                        });
+                    }
+                        
+                </script>
+            </div>
+        </div>
+    </main>
 </body>
