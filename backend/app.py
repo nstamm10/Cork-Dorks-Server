@@ -157,9 +157,7 @@ wine title contains 0 'or_words', title is not in list.
 def boolean_search(or_words, description):
     inv_index = description[0]
     title_dict = description[1]
-    # tokenizer = TreebankWordTokenizer()
-    # or_words = or_words.lower()
-    # or_words = tokenizer.tokenize(or_words)
+  
     postings = inv_index[or_words[0]]
     for i in range(1, len(or_words)):
         current_lst = inv_index[or_words[i]]
@@ -301,8 +299,7 @@ def query_expansion(query):
             expanded.append(tok)
 
     return expanded
-
- 
+  
 #query_expansion(query) expanded input query
 #doc_dict.values() doc query
 #compute cosine_sim(expanded_query, doc_dict.values)
@@ -356,7 +353,44 @@ def cosine_sim(query):
     print(f'here are the top docs{top_docs}')
     return top_docs
 
-'''
+#return string which represents rationale for selected wine
+#Assumes that the given wine WAS SUCCESFULLY matched
+#Please do not call rationale for a wine that we do not have a match for.
+#This is because our inverted_index uses an "AND" statement for searching these params
+# against the SQL database!
+def rationale(query_words,wine_info,price=None, minpoint = None, country = None, region = None, winery = None, variety = None):
+    ans = "This wine is recommended because it is "
+    tokenizer = TreebankWordTokenizer()
+    description = tokenizer.tokenize(wine_info['description'])
+
+    matched_words=[]
+    for word in query_words:
+        if word in description:
+            matched_words.append(word)
+
+    for ind, word in enumerate(matched_words):
+        ans+= str(word)
+        if ind!= len(matched_words)-1:
+            ans +=", "
+        else:
+            ans += " "
+    if price:
+        if len(matched_words) == 0:
+            ans+= "less than or equal to "+str(price)
+        else:
+            ans+= "and is less than or equal to $"+str(price)
+    if minpoint:
+        ans += ", has a rating of at least "+str(minpoint)
+    if country:
+        ans += ", is from "+str(country)
+    if region:
+        ans += ", is from the "+str(region) + " region"
+    if winery:
+        ans += ", is from "+str(winery)
+    if variety:
+        ans += ", and is of the "+str(variety)+" variety."
+    
+    return ans
 
 
 @app.route("/description")
@@ -380,7 +414,9 @@ def description_search():
         try:
             wine['pairing'] = json.loads(response.text)['pairings'][0]
         except KeyError:
-            wine['pairing'] = 'No Pairing Found'      
+            wine['pairing'] = 'No Pairing Found'     
+
+        wine['rationale'] = rationale(expanded_query,wine,price)
     return json.dumps(dic)
 
 
