@@ -169,6 +169,7 @@ def boolean_search(or_words, description):
     title_postings = []
     for posting in postings:
         title_postings.append((title_dict[posting[0]], posting[1]))
+    titles = sorted(title_postings, key= lambda x: x[1], reverse=True)
     titles = [val[0] for val in title_postings if val[1] > 0]
     return titles
     
@@ -307,17 +308,19 @@ def query_expansion(query):
 #doc_dict.values() doc query
 #compute cosine_sim(expanded_query, doc_dict.values)
 def cosine_sim(query, titles):
-    print(titles)
-    query_sql = f"""SELECT * FROM wine_data WHERE title in {titles}"""
+    query_sql = f"""SELECT * FROM wine_data"""
     keys = ["country", "description", "designation", "points", "price", "province", "region_1", "region_2", "title", "variety", "winery"]
     data = mysql_engine.query_selector(query_sql)
 
     #{title:words} dict
     doc_dict = {}
     for doc in data:
-        doc_text = f"{doc['description']} {doc['designation']} {doc['points']} {doc['price']} {doc['province']} {doc['region_1']} {doc['region_2']} {doc['variety']} {doc['winery']}"
-        doc_tokens = [word for word in TreebankWordTokenizer().tokenize(doc_text) if word not in string.punctuation and not word.isdigit()]
-        doc_dict[doc['title']] = doc_tokens
+        if doc['title'] in titles:
+            doc_text = f"{doc['description']} {doc['designation']} {doc['points']} {doc['price']} {doc['province']} {doc['region_1']} {doc['region_2']} {doc['variety']} {doc['winery']}"
+            doc_tokens = [word for word in TreebankWordTokenizer().tokenize(doc_text) if word not in string.punctuation and not word.isdigit()]
+            doc_dict[doc['title']] = doc_tokens
+    print(len(titles))
+    print(len(doc_dict.keys()))
 
     docs = [" ".join(doc_dict[title]) for title in doc_dict.keys()]
     tfidf_vectorizer = TfidfVectorizer()
@@ -334,7 +337,6 @@ def cosine_sim(query, titles):
     # Sort results by cosine similarity in descending order
     results = sorted(zip(titles, cosine_similarities), key=lambda x: round(x[1]*100,3), reverse=True)[:3]
     output_titles = [val[0] for val in results]
-    print(output_titles)
     return output_titles
 
 #return string which represents rationale for selected wine
@@ -385,11 +387,11 @@ def description_search():
     inv_index = description_inverted_index(price)
     titles = boolean_search(expanded_query, inv_index)
     cos_sim = cosine_sim(expanded_query, titles) 
-    query_sql = f"""SELECT * FROM wine_data WHERE title in {titles}"""
+    query_sql = f"""SELECT * FROM wine_data"""
     keys = ["country", "description", "designation", "points", "price", "province",
             "region_1", "region_2", "title", "variety", "winery"]
     data = mysql_engine.query_selector(query_sql)
-    dic = [dict(zip(keys,i)) for i in data]
+    dic = [dict(zip(keys,i)) for i in data if i["title"] in cos_sim]
     for wine in dic:
         variety = wine['variety']
         url = f"https://api.spoonacular.com/food/wine/dishes?apiKey={KEY}&wine={variety}"
@@ -400,6 +402,7 @@ def description_search():
             wine['pairing'] = 'No Pairing Found'     
 
         wine['rationale'] = rationale(expanded_query,wine,price)
+    print(dic)
     return json.dumps(dic)
 
 
