@@ -70,7 +70,7 @@ def episodes_search():
 Returns inverted index representation of wine descriptions
 Returns dictionary of the form: {term : [(wine_title, count), ...]}
 '''
-def description_inverted_index(price=None, country = None, variety = None):
+def description_inverted_index(price=10000, country = None, variety = None):
     # Fetching Data
     query_sql = f"""SELECT title, description, country, designation, province,region_1,region_2,variety,winery 
     FROM wine_data"""
@@ -80,10 +80,13 @@ def description_inverted_index(price=None, country = None, variety = None):
         where_statement += f""" WHERE price <= {price}"""
 
     if country:
-            where_statement += f""" AND country = '{country}'"""
+            if len(where_statement) == 0:
+                where_statement += f""" WHERE variety = {country}"""
+            else: 
+                where_statement += f""" AND variety = '{country}'"""
 
     if variety:
-         if where_statement.isEmpty():
+         if len(where_statement) == 0:
             where_statement += f""" WHERE variety = {variety}"""
          else: 
             where_statement += f""" AND variety = '{variety}'"""
