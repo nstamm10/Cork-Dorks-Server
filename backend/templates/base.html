@@ -14,8 +14,57 @@
             <div class="input-box">
                 <input placeholder="(earthy, full-bodied, etc.)" id="description" size="50">
             </div>
+            
             <div class="input-box">
                 <input placeholder="Maximum Price" id="max_price">
+            </div>
+            <div class="dropdown">
+                <label for="input_drop">Country: </label>
+                <select name="input_drop" id="input_drop">
+                    <option aria-placeholder="None">
+                    <option value="France">France</option>
+                    <option value="Italy">Italy</option>
+                    <option value="Portugal">Portugal</option>
+                    <option value="US">US</option>
+                    <option value="Spain">Spain</option>
+                    <option value="Germany">Germany</option>
+                    <option value="Argentina">Argentina</option>
+                    <option value="Chile">Chile</option>
+                    <option value="Australia">Australia</option>
+                    <option value="South Africa">South Africa</option>
+                    <option value="New Zealand">New Zealand</option>
+                    <option value="Israel">Israel</option>
+                    <option value="Canada">Canada</option>
+                    <option value="Mexico">Mexico</option>
+                    <option value="Brazil">Brazil</option>
+                    <option value="Peru">Peru</option>
+                    <option value="Uruguay">Uruguay</option>
+                    <option value="Morocco">Morocco</option>
+                    <option value="Switzerland">Switzerland</option>
+                    <option value="Austria">Austria</option>
+                    <option value="Greece">Greece</option>
+                    <option value="Czech Republic">Czech Republic</option>
+                    <option value="Hungary">Hungary</option>
+                    <option value="Slovenia">Slovenia</option>
+                    <option value="Croatia">Croatia</option>
+                    <option value="Bosnia">Bosnia</option>
+                    <option value="Macedonia">Macedonia</option>
+                    <option value="Serbia">Serbia</option>
+                    <option value="Bulgaria">Bulgaria</option>
+                    <option value="Romania">Romania</option>
+                    <option value="Moldova">Moldova</option>
+                    <option value="Ukraine">Ukraine</option>
+                    <option value="Georgia">Georgia</option>
+                    <option value="Armenia">Armenia</option>
+                    <option value="Cyprus">Cyprus</option>
+                    <option value="Lebanon">Lebanon</option>
+                    <option value="India">India</option>
+                    <option value="China">China</option>
+                    <option value="Turkey">Turkey</option>
+                    <option value="Kosovo">Kosovo</option>
+                    <option value="Luxembourg">Luxembourg</option>
+                    <option value="Portugal">Portugal</option>
+                </select>
             </div>
             <div class="submit">
                 <input type="button" value="Search" onclick="filterText()">
@@ -23,11 +72,13 @@
             <div id="answer-box">
                 <script>
     
-                    function answerBoxTemplate(title, price, points){
+                    function answerBoxTemplate(title, price, points, pairing, rationale){
                         return `<div class='answers'>
                             <h3 class='episode-title'>Name: ${title}</h3>
                             <h3 class='price'>Price: ${price}</h3>
                             <h3 class='price'>Points: ${points}</h3>
+                            <h4 class='pairing'>Pairing: ${pairing}</h4>
+                            <h4 class='rationale'>Rationale: ${rationale}</h4>
                         </div>`
                     }
             
@@ -40,12 +91,13 @@
             
                         console.log(document.getElementById("max_price").value)
                         console.log(document.getElementById("description").value)
-                        fetch("/description?" + new URLSearchParams({ max_price: document.getElementById("max_price").value, description: document.getElementById("description").value}).toString())
+                        console.log(document.getElementById("input_drop").value)
+                        fetch("/description?" + new URLSearchParams({ max_price: document.getElementById("max_price").value, description: document.getElementById("description").value, country: document.getElementById("input_drop").value}).toString())
                         .then((response) => response.json())
                         .then((x) => {
                             for (row in x) {
                                 let tempDiv = document.createElement("div",row)
-                                tempDiv.innerHTML = answerBoxTemplate(x[row].title, x[row].price, x[row].points)
+                                tempDiv.innerHTML = answerBoxTemplate(x[row].title, x[row].price, x[row].points, x[row].pairing, x[row].rationale)
                                 document.getElementById("answer-box").appendChild(tempDiv)
                             }
                         });

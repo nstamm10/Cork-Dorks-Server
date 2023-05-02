@@ -70,7 +70,7 @@ def episodes_search():
 Returns inverted index representation of wine descriptions
 Returns dictionary of the form: {term : [(wine_title, count), ...]}
 '''
-def description_inverted_index(price=None, minpoint = None, country = None, region = None, winery = None, variety = None):
+def description_inverted_index(price=None, variety = None, minpoint = None, country = None, region = None, winery = None):
     # Fetching Data
     query_sql = f"""SELECT title, description, country, designation, province,region_1,region_2,variety,winery 
     FROM wine_data"""
@@ -86,10 +86,7 @@ def description_inverted_index(price=None, minpoint = None, country = None, regi
             where_statement += f""" AND price >= {minpoint}"""
 
     if country:
-        if where_statement.isEmpty():
-            where_statement += f""" WHERE country = {country}"""
-        else: 
-            where_statement += f""" AND country = {country}"""
+            where_statement += f""" AND country = '{country}'"""
 
     if region:
         if where_statement.isEmpty():
@@ -104,10 +101,10 @@ def description_inverted_index(price=None, minpoint = None, country = None, regi
             where_statement += f""" AND winery = {winery}"""
 
     if variety:
-        if where_statement.isEmpty():
+         if where_statement.isEmpty():
             where_statement += f""" WHERE variety = {variety}"""
-        else: 
-            where_statement += f""" AND variety = {variety}"""
+         else: 
+            where_statement += f""" AND variety = '{variety}'"""
 
     query_sql += where_statement
 
@@ -382,9 +379,10 @@ def rationale(query_words,wine_info,price=None, minpoint = None, country = None,
 @app.route("/description")
 def description_search():
     price= request.args.get("max_price")
-    query = request.args.get("description")
+    query= request.args.get("description")
+    country= request.args.get("country")
     expanded_query = query_expansion(query)
-    inv_index = description_inverted_index(price)
+    inv_index = description_inverted_index(price, country=country)
     titles = boolean_search(expanded_query, inv_index)
     cos_sim = cosine_sim(expanded_query, titles) 
     query_sql = f"""SELECT * FROM wine_data"""
