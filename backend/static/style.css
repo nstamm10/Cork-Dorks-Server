@@ -29,6 +29,17 @@ body{
     width: 600px;
 }
 
+.dropdown{
+  background-color: antiquewhite;
+  border-radius: 20px;
+    border:1px solid black;
+    display: flex;
+    align-items: center;
+    margin-top: 10px;
+    padding:12px;
+    width: 180px;
+}
+
 .input-box input{
     width: 100%;
     margin-left: 10px;

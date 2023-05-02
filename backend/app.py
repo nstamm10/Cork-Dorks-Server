@@ -70,7 +70,7 @@ def episodes_search():
 Returns inverted index representation of wine descriptions
 Returns dictionary of the form: {term : [(wine_title, count), ...]}
 '''
-def description_inverted_index(price=None, minpoint = None, country = None, region = None, winery = None, variety = None):
+def description_inverted_index(price=10000, country = None, variety = None):
     # Fetching Data
     query_sql = f"""SELECT title, description, country, designation, province,region_1,region_2,variety,winery 
     FROM wine_data"""
@@ -78,36 +78,18 @@ def description_inverted_index(price=None, minpoint = None, country = None, regi
 
     if price:
         where_statement += f""" WHERE price <= {price}"""
-    
-    if minpoint:
-        if where_statement.isEmpty():
-            where_statement += f""" WHERE price >= {minpoint}"""
-        else: 
-            where_statement += f""" AND price >= {minpoint}"""
 
     if country:
-        if where_statement.isEmpty():
-            where_statement += f""" WHERE country = {country}"""
-        else: 
-            where_statement += f""" AND country = {country}"""
-
-    if region:
-        if where_statement.isEmpty():
-            where_statement += f""" WHERE region = {region}"""
-        else: 
-            where_statement += f""" AND region = {region}"""
-    
-    if winery:
-        if where_statement.isEmpty():
-            where_statement += f""" WHERE winery = {winery}"""
-        else: 
-            where_statement += f""" AND winery = {winery}"""
+            if len(where_statement) == 0:
+                where_statement += f""" WHERE variety = {country}"""
+            else: 
+                where_statement += f""" AND variety = '{country}'"""
 
     if variety:
-        if where_statement.isEmpty():
+         if len(where_statement) == 0:
             where_statement += f""" WHERE variety = {variety}"""
-        else: 
-            where_statement += f""" AND variety = {variety}"""
+         else: 
+            where_statement += f""" AND variety = '{variety}'"""
 
     query_sql += where_statement
 
@@ -333,8 +315,8 @@ def cosine_sim(query, titles):
     titles = list(doc_dict.keys())
     cosine_similarities = cosine_similarities[0]
     
-    #sort results by cosine similarity
-    results = sorted(zip(titles, cosine_similarities), key=lambda x: round(x[1]*100,3), reverse=True)[:3]
+    # Sort results by cosine similarity in descending order
+    results = sorted(zip(titles, cosine_similarities), key=lambda x: round(x[1]*100,3), reverse=True)[:2]
     output_titles = [val[0] for val in results]
     return output_titles
 
@@ -376,9 +358,10 @@ def rationale(query_words,wine_info,price=None,country = None, variety = None):
 def description_search():
     price= request.args.get("max_price")
     query = request.args.get("description")
+    country = request.args.get("country")
+    variety = request.args.get("variety")
     expanded_query = query_expansion(query)
-    
-    inv_index = description_inverted_index(price)
+    inv_index = description_inverted_index(price=price, country=country, variety=variety)
     titles = boolean_search(expanded_query, inv_index)
     cos_sim = cosine_sim(expanded_query, titles) 
     query_sql = f"""SELECT * FROM wine_data"""
