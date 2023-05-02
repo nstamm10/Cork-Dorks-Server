@@ -284,10 +284,11 @@ def underscore(tokens):
     return new_toks
 
 def query_expansion(query):
-    tokens = tokenizer(query)
-    tokens = pos_tagger(tokens)
+    tokenizer = TreebankWordTokenizer()
+    description = tokenizer.tokenize(query)
+    tokens = pos_tagger(description)
     tokens = stopword_treatment(tokens)
-    
+
     synsets = get_synsets(tokens)
     synoynms = get_synset_toks(synsets)
     synoynms = underscore(synoynms)
@@ -298,11 +299,12 @@ def query_expansion(query):
 
     expanded = {**synoynms, **hypernyms}
     expanded = list(expanded.keys())
-    tokenized_original = TreebankWordTokenizer().tokenize(query)
-    for tok in tokenized_original:
-        if tok not in expanded:
-            expanded.append(tok)
-    return expanded
+
+    tagged_tokens = nltk.pos_tag(description)
+    adjectives = [word for word, tag in tagged_tokens if tag == 'JJ' or tag =='NN']
+
+    final_list = list(set(adjectives).union(set(expanded)))
+    return final_list
   
 #query_expansion(query) expanded input query
 #doc_dict.values() doc query
@@ -312,46 +314,43 @@ def cosine_sim(query, titles):
     keys = ["country", "description", "designation", "points", "price", "province", "region_1", "region_2", "title", "variety", "winery"]
     data = mysql_engine.query_selector(query_sql)
 
-    #{title:words} dict
     doc_dict = {}
     for doc in data:
         if doc['title'] in titles:
             doc_text = f"{doc['description']} {doc['designation']} {doc['points']} {doc['price']} {doc['province']} {doc['region_1']} {doc['region_2']} {doc['variety']} {doc['winery']}"
             doc_tokens = [word for word in TreebankWordTokenizer().tokenize(doc_text) if word not in string.punctuation and not word.isdigit()]
             doc_dict[doc['title']] = doc_tokens
-    print(len(titles))
-    print(len(doc_dict.keys()))
 
     docs = [" ".join(doc_dict[title]) for title in doc_dict.keys()]
     tfidf_vectorizer = TfidfVectorizer()
     tfidf_matrix = tfidf_vectorizer.fit_transform(docs)
 
-    # Compute cosine similarity between query and document vectors
+    #Compute cosine sim
     query_vec = tfidf_vectorizer.transform([' '.join(query)])
     cosine_similarities = cosine_similarity(query_vec, tfidf_matrix)
 
-    # Get titles and corresponding cosine similarities
+    #Get titles and cosine similarities
     titles = list(doc_dict.keys())
     cosine_similarities = cosine_similarities[0]
     
-    # Sort results by cosine similarity in descending order
+    #sort results by cosine similarity
     results = sorted(zip(titles, cosine_similarities), key=lambda x: round(x[1]*100,3), reverse=True)[:3]
     output_titles = [val[0] for val in results]
     return output_titles
 
-#return string which represents rationale for selected wine
-#Assumes that the given wine WAS SUCCESFULLY matched
-#Please do not call rationale for a wine that we do not have a match for.
-#This is because our inverted_index uses an "AND" statement for searching these params
-# against the SQL database!
-def rationale(query_words,wine_info,price=None, minpoint = None, country = None, region = None, winery = None, variety = None):
+#return string which represents rationale for selected wine wines
+def rationale(query_words,wine_info,price=None,country = None, variety = None):
     ans = "This wine is recommended because it is "
     tokenizer = TreebankWordTokenizer()
     description = tokenizer.tokenize(wine_info['description'])
+    query_words = set(query_words)
+
+    pos_tags = nltk.pos_tag(query_words)
+    adjectives = [word for (word, tag) in pos_tags if tag.startswith('JJ')]
 
     matched_words=[]
-    for word in query_words:
-        if word in description:
+    for word in adjectives:
+        if word in description and word != "wine":
             matched_words.append(word)
 
     for ind, word in enumerate(matched_words):
@@ -362,17 +361,11 @@ def rationale(query_words,wine_info,price=None, minpoint = None, country = None,
             ans += " "
     if price:
         if len(matched_words) == 0:
-            ans+= "less than or equal to "+str(price)
+            ans+= "$"+str(wine_info['price'])
         else:
-            ans+= "and is less than or equal to $"+str(price)
-    if minpoint:
-        ans += ", has a rating of at least "+str(minpoint)
+            ans+= "and is $"+str(wine_info['price'])
     if country:
         ans += ", is from "+str(country)
-    if region:
-        ans += ", is from the "+str(region) + " region"
-    if winery:
-        ans += ", is from "+str(winery)
     if variety:
         ans += ", and is of the "+str(variety)+" variety."
     
@@ -384,6 +377,7 @@ def description_search():
     price= request.args.get("max_price")
     query = request.args.get("description")
     expanded_query = query_expansion(query)
+    
     inv_index = description_inverted_index(price)
     titles = boolean_search(expanded_query, inv_index)
     cos_sim = cosine_sim(expanded_query, titles) 
@@ -402,7 +396,6 @@ def description_search():
             wine['pairing'] = 'No Pairing Found'     
 
         wine['rationale'] = rationale(expanded_query,wine,price)
-    print(dic)
     return json.dumps(dic)
 
 
