@@ -80,16 +80,13 @@ def description_inverted_index(price=None, country = None, variety = None):
         where_statement += f""" WHERE price <= {price}"""
 
     if country:
-        if where_statement.isEmpty():
-            where_statement += f""" WHERE country = {country}"""
-        else: 
-            where_statement += f""" AND country = {country}"""
+            where_statement += f""" AND country = '{country}'"""
 
     if variety:
-        if where_statement.isEmpty():
+         if where_statement.isEmpty():
             where_statement += f""" WHERE variety = {variety}"""
-        else: 
-            where_statement += f""" AND variety = {variety}"""
+         else: 
+            where_statement += f""" AND variety = '{variety}'"""
 
     query_sql += where_statement
 
@@ -368,7 +365,7 @@ def description_search():
     country = request.args.get("country")
     variety = request.args.get("variety")
     expanded_query = query_expansion(query)
-    inv_index = description_inverted_index(price, country, variety)
+    inv_index = description_inverted_index(price=price, country=country, variety=variety)
     titles = boolean_search(expanded_query, inv_index)
     cos_sim = cosine_sim(expanded_query, titles) 
     query_sql = f"""SELECT * FROM wine_data"""
