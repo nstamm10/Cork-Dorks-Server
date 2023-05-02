@@ -10,8 +10,14 @@ from nltk.corpus import wordnet as wn
 from nltk.tokenize import word_tokenize
 from nltk.corpus import stopwords
 import re
+import string
 import ssl
 import requests
+import itertools
+from sklearn.metrics.pairwise import cosine_similarity
+from sklearn.feature_extraction.text import TfidfVectorizer
+
+
 
 # ROOT_PATH for linking with all your files. 
 # Feel free to use a config.py or settings.py with a global export variable
@@ -152,13 +158,17 @@ def boolean_search(or_words, description):
   
     postings = inv_index[or_words[0]]
     for i in range(1, len(or_words)):
-        current_lst = inv_index[or_words[i]]
-        postings = or_merge_postings(postings, current_lst)
+        try:
+            current_lst = inv_index[or_words[i]]
+            postings = or_merge_postings(postings, current_lst)
+        except KeyError:
+            pass
     title_postings = []
     for posting in postings:
         title_postings.append((title_dict[posting[0]], posting[1]))
-    title_postings.sort(key = lambda tup : tup[1], reverse=True)
-    return list(zip(*title_postings[:3]))[0]
+    titles = sorted(title_postings, key= lambda x: x[1], reverse=True)
+    titles = [val[0] for val in title_postings if val[1] > 0]
+    return titles
     
 def or_merge_postings(lst1, lst2):
     p1, p2 = 0, 0
@@ -289,8 +299,42 @@ def query_expansion(query):
     for tok in tokenized_original:
         if tok not in expanded:
             expanded.append(tok)
-
     return expanded
+  
+#query_expansion(query) expanded input query
+#doc_dict.values() doc query
+#compute cosine_sim(expanded_query, doc_dict.values)
+def cosine_sim(query, titles):
+    query_sql = f"""SELECT * FROM wine_data"""
+    keys = ["country", "description", "designation", "points", "price", "province", "region_1", "region_2", "title", "variety", "winery"]
+    data = mysql_engine.query_selector(query_sql)
+
+    #{title:words} dict
+    doc_dict = {}
+    for doc in data:
+        if doc['title'] in titles:
+            doc_text = f"{doc['description']} {doc['designation']} {doc['points']} {doc['price']} {doc['province']} {doc['region_1']} {doc['region_2']} {doc['variety']} {doc['winery']}"
+            doc_tokens = [word for word in TreebankWordTokenizer().tokenize(doc_text) if word not in string.punctuation and not word.isdigit()]
+            doc_dict[doc['title']] = doc_tokens
+    print(len(titles))
+    print(len(doc_dict.keys()))
+
+    docs = [" ".join(doc_dict[title]) for title in doc_dict.keys()]
+    tfidf_vectorizer = TfidfVectorizer()
+    tfidf_matrix = tfidf_vectorizer.fit_transform(docs)
+
+    # Compute cosine similarity between query and document vectors
+    query_vec = tfidf_vectorizer.transform([' '.join(query)])
+    cosine_similarities = cosine_similarity(query_vec, tfidf_matrix)
+
+    # Get titles and corresponding cosine similarities
+    titles = list(doc_dict.keys())
+    cosine_similarities = cosine_similarities[0]
+    
+    # Sort results by cosine similarity in descending order
+    results = sorted(zip(titles, cosine_similarities), key=lambda x: round(x[1]*100,3), reverse=True)[:2]
+    output_titles = [val[0] for val in results]
+    return output_titles
 
 #return string which represents rationale for selected wine
 #Assumes that the given wine WAS SUCCESFULLY matched
@@ -332,7 +376,6 @@ def rationale(query_words,wine_info,price=None, minpoint = None, country = None,
     return ans
 
 
-
 @app.route("/description")
 def description_search():
     price= request.args.get("max_price")
@@ -341,11 +384,12 @@ def description_search():
     expanded_query = query_expansion(query)
     inv_index = description_inverted_index(price, country=country)
     titles = boolean_search(expanded_query, inv_index)
-    query_sql = f"""SELECT * FROM wine_data WHERE title in {titles}"""
+    cos_sim = cosine_sim(expanded_query, titles) 
+    query_sql = f"""SELECT * FROM wine_data"""
     keys = ["country", "description", "designation", "points", "price", "province",
             "region_1", "region_2", "title", "variety", "winery"]
     data = mysql_engine.query_selector(query_sql)
-    dic = [dict(zip(keys,i)) for i in data]
+    dic = [dict(zip(keys,i)) for i in data if i["title"] in cos_sim]
     for wine in dic:
         variety = wine['variety']
         url = f"https://api.spoonacular.com/food/wine/dishes?apiKey={KEY}&wine={variety}"
@@ -356,6 +400,7 @@ def description_search():
             wine['pairing'] = 'No Pairing Found'     
 
         wine['rationale'] = rationale(expanded_query,wine,price)
+    print(dic)
     return json.dumps(dic)
 
 
