@@ -141,8 +141,8 @@ def boolean_search(or_words, description):
     inv_index = description[0]
     title_dict = description[1]
   
-    postings = inv_index[or_words[0]]
-    for i in range(1, len(or_words)):
+    postings = []
+    for i in range(len(or_words)):
         try:
             current_lst = inv_index[or_words[i]]
             postings = or_merge_postings(postings, current_lst)
@@ -359,9 +359,8 @@ def description_search():
     price= request.args.get("max_price")
     query = request.args.get("description")
     country = request.args.get("country")
-    variety = request.args.get("variety")
     expanded_query = query_expansion(query)
-    inv_index = description_inverted_index(price=price, country=country, variety=variety)
+    inv_index = description_inverted_index(price=price, country=country)
     titles = boolean_search(expanded_query, inv_index)
     cos_sim = cosine_sim(expanded_query, titles) 
     query_sql = f"""SELECT * FROM wine_data"""
@@ -382,4 +381,4 @@ def description_search():
     return json.dumps(dic)
 
 
-# app.run(debug=True)
+app.run(debug=True)
