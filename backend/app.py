@@ -81,13 +81,13 @@ def description_inverted_index(price=10000, country = None, variety = None):
 
     if country:
             if len(where_statement) == 0:
-                where_statement += f""" WHERE variety = {country}"""
+                where_statement += f""" WHERE country = '{country}'"""
             else: 
-                where_statement += f""" AND variety = '{country}'"""
+                where_statement += f""" AND country = '{country}'"""
 
     if variety:
          if len(where_statement) == 0:
-            where_statement += f""" WHERE variety = {variety}"""
+            where_statement += f""" WHERE variety = '{variety}'"""
          else: 
             where_statement += f""" AND variety = '{variety}'"""
 
@@ -316,7 +316,7 @@ def cosine_sim(query, titles):
     cosine_similarities = cosine_similarities[0]
     
     # Sort results by cosine similarity in descending order
-    results = sorted(zip(titles, cosine_similarities), key=lambda x: round(x[1]*100,3), reverse=True)[:2]
+    results = sorted(zip(titles, cosine_similarities), key=lambda x: round(x[1]*100,3), reverse=True)[:3]
     output_titles = [val[0] for val in results]
     return output_titles
 
@@ -340,12 +340,12 @@ def rationale(query_words,wine_info,price=None,country = None, variety = None):
         if ind!= len(matched_words)-1:
             ans +=", "
         else:
-            ans += " "
+            ans += ""
     if price:
         if len(matched_words) == 0:
-            ans+= "$"+str(wine_info['price'])
+            ans+= " $"+str(wine_info['price'])
         else:
-            ans+= "and is $"+str(wine_info['price'])
+            ans+= " and is $"+str(wine_info['price'])
     if country:
         ans += ", is from "+str(country)
     if variety:
@@ -378,7 +378,7 @@ def description_search():
         except KeyError:
             wine['pairing'] = 'No Pairing Found'     
 
-        wine['rationale'] = rationale(expanded_query,wine,price)
+        wine['rationale'] = rationale(expanded_query,wine,price=price, variety=variety, country=country)
     return json.dumps(dic)
 
 
