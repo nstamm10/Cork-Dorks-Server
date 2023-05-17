@@ -17,8 +17,6 @@ import itertools
 from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.feature_extraction.text import TfidfVectorizer
 
-
-
 # ROOT_PATH for linking with all your files. 
 # Feel free to use a config.py or settings.py with a global export variable
 os.environ['ROOT_PATH'] = os.path.abspath(os.path.join("..",os.curdir))
@@ -65,118 +63,6 @@ def episodes_search():
     points= request.args.get("min_points")
     pnp = price_and_points(price,points)
     return pnp
-
-'''
-Returns inverted index representation of wine descriptions
-Returns dictionary of the form: {term : [(wine_title, count), ...]}
-'''
-def description_inverted_index(price=10000, country = None, variety = None):
-    # Fetching Data
-    query_sql = f"""SELECT title, description, country, designation, province,region_1,region_2,variety,winery 
-    FROM wine_data"""
-    where_statement = ""
-
-    if price:
-        where_statement += f""" WHERE price <= {price}"""
-
-    if country:
-            if len(where_statement) == 0:
-                where_statement += f""" WHERE country = '{country}'"""
-            else: 
-                where_statement += f""" AND country = '{country}'"""
-
-    if variety:
-         if len(where_statement) == 0:
-            where_statement += f""" WHERE variety = '{variety}'"""
-         else: 
-            where_statement += f""" AND variety = '{variety}'"""
-
-    query_sql += where_statement
-
-    data = mysql_engine.query_selector(query_sql)
-    lst =[]
-    for i in data:
-        dict = {}
-        words = ""
-        for j in i:
-            if j:
-                words+=(" "+j)
-        dict["title"] = i[0]
-        dict["description_words"] = words
-        lst.append(dict)
-   
-    input_dict = json.loads(json.dumps(lst))
-    tokenizer = TreebankWordTokenizer()
-    for i in range(len(input_dict)):
-        input_dict[i]["description_words"] = tokenizer.tokenize(input_dict[i]["description_words"])
-        input_dict[i]["description_words"] = [x.lower() for x in input_dict[i]["description_words"]]
-    
-    titles = [x['title'] for x in input_dict]
-    title_dict = {k : v for k, v in enumerate(titles)}
-    # Building Inverted Index
-    dic = {}
-    for i in range(len(input_dict)):
-        for tok in input_dict[i]['description_words']:
-            if tok not in dic.keys():
-                dic[tok] = {i : 1}
-            else:
-                if i not in dic[tok].keys():
-                    dic[tok][i] = 1
-                else:
-                    dic[tok][i] += 1
-        
-    inv_index = {}
-    for tok in dic.keys():
-        inv_index[tok] = []
-        for k, v in dic[tok].items():
-            inv_index[tok].append((k, v))
-        inv_index[tok].sort(key = lambda tup : tup[0])
-    return inv_index, title_dict
-
-'''
-Returns sorted wine titles by number of or_words contained in titles description. If
-wine title contains 0 'or_words', title is not in list.
-'''
-def boolean_search(or_words, description):
-    inv_index = description[0]
-    title_dict = description[1]
-  
-    postings = []
-    for i in range(len(or_words)):
-        try:
-            current_lst = inv_index[or_words[i]]
-            postings = or_merge_postings(postings, current_lst)
-        except KeyError:
-            pass
-    title_postings = []
-    for posting in postings:
-        title_postings.append((title_dict[posting[0]], posting[1]))
-    titles = sorted(title_postings, key= lambda x: x[1], reverse=True)
-    titles = [val[0] for val in title_postings if val[1] > 0]
-    return titles
-    
-def or_merge_postings(lst1, lst2):
-    p1, p2 = 0, 0
-    output = []
-    while p1 < len(lst1) and p2 < len(lst2):
-        if lst1[p1][0] > lst2[p2][0]:
-            output.append(lst2[p2])
-            p2 += 1
-        elif lst1[p1][0] < lst2[p2][0]:
-            output.append(lst1[p1])
-            p1 += 1
-        else:
-            count = lst1[p1][1] + lst2[p2][1]
-            output.append((lst1[p1][0], count))
-            p1 += 1
-            p2 += 1
-    while p2 < len(lst2):
-        output.append(lst2[p2])
-        p2 += 1
-    while p1 < len(lst1):
-        output.append(lst1[p1])
-        p1 += 1
-    return output
 
 def download_packages():
     try:
@@ -288,20 +174,7 @@ def query_expansion(query):
     final_list = list(set(adjectives).union(set(expanded)))
     return final_list
   
-#query_expansion(query) expanded input query
-#doc_dict.values() doc query
-#compute cosine_sim(expanded_query, doc_dict.values)
-def cosine_sim(query, titles):
-    query_sql = f"""SELECT * FROM wine_data"""
-    keys = ["country", "description", "designation", "points", "price", "province", "region_1", "region_2", "title", "variety", "winery"]
-    data = mysql_engine.query_selector(query_sql)
-
-    doc_dict = {}
-    for doc in data:
-        if doc['title'] in titles:
-            doc_text = f"{doc['description']} {doc['designation']} {doc['points']} {doc['price']} {doc['province']} {doc['region_1']} {doc['region_2']} {doc['variety']} {doc['winery']}"
-            doc_tokens = [word for word in TreebankWordTokenizer().tokenize(doc_text) if word not in string.punctuation and not word.isdigit()]
-            doc_dict[doc['title']] = doc_tokens
+def cosine_sim(query,doc_dict):
 
     docs = [" ".join(doc_dict[title]) for title in doc_dict.keys()]
     tfidf_vectorizer = TfidfVectorizer()
@@ -315,7 +188,7 @@ def cosine_sim(query, titles):
     titles = list(doc_dict.keys())
     cosine_similarities = cosine_similarities[0]
     
-    # Sort results by cosine similarity in descending order
+    #Sort results by cosine similarity in descending order
     results = sorted(zip(titles, cosine_similarities), key=lambda x: round(x[1]*100,3), reverse=True)[:3]
     output_titles = [val[0] for val in results]
     return output_titles
@@ -350,9 +223,89 @@ def rationale(query_words,wine_info,price=None,country = None, variety = None):
         ans += ", is from "+str(country)
     if variety:
         ans += ", and is of the "+str(variety)+" variety."
-    
     return ans
 
+def slice(query,price,country):
+
+    tokenizer = TreebankWordTokenizer()
+    query_words = tokenizer.tokenize(query)
+
+    wine_varieties = ["Chardonnay", "Sauvignon Blanc", "Riesling", "Pinot Grigio", "GewÃ¼rztraminer", 
+    "Muscat", "Viognier", "Cabernet Sauvignon", "Merlot", "Pinot Noir", 
+    "Syrah/Shiraz", "Zinfandel", "Malbec", "Cabernet Franc", "Petit Verdot", 
+    "Sangiovese", "Nebbiolo", "Tempranillo", "Grenache", "Mourvèdre", 
+    "Carménère", "Pinotage", "Chianti", "Rioja", "Barolo", 
+    "Bordeaux", "Burgundy", "Beaujolais", "Champagne", "Prosecco", 
+    "Port", "Sherry", "White Blend", "Glera", "RhÃ´ne-style Red Blend", 
+    "Red Blend", "Bordeaux-style White Blend", "Petite Sirah", "Nerello Cappuccio", 
+    "Pinot Blanc", "Sparkling Blend", "Portuguese White", "RosÃ©", "Meritage", 
+    "Syrah", "Shiraz", "Loureiro", "Sauvignon Blanc", "Cabernet Sauvignon","Rose","Gewürztraminer"]
+
+    red_wine_varieties = ["Cabernet Sauvignon", "Merlot", "Pinot Noir", "Syrah/Shiraz", "Zinfandel",
+                      "Malbec", "Cabernet Franc", "Petit Verdot", "Sangiovese", "Nebbiolo",
+                      "Tempranillo", "Grenache", "Mourvèdre", "Carménère", "Pinotage",
+                      "Rhône-style Red Blend", "Red Blend", "Bordeaux-style Red Blend",
+                      "Syrah", "Shiraz"]
+
+    white_wine_varieties = ["Chardonnay", "Sauvignon Blanc", "Riesling", "Pinot Grigio", "Gewürztraminer",
+                        "Muscat", "Viognier", "White Blend", "Glera", "Bordeaux-style White Blend",
+                        "Petit Verdot", "Pinot Blanc", "Portuguese White", "Sparkling Blend"]
+
+    rose_wine_varieties = ["Rosé", "Blush", "White Zinfandel", "Grenache Rosé", "Provence-style Rosé",
+                       "Syrah Rosé", "Tempranillo Rosé"]
+
+    sparkling_wine_varieties = ["Champagne", "Prosecco", "Cava", "Sparkling Rosé", "Moscato d'Asti",
+                            "Crémant"]
+
+    specified_variety = []
+    specified_red = False
+    specified_white = False
+    specified_rose = False
+    specified_sparkling = False
+
+    lower_case_wine_varieties = [wine.lower() for wine in wine_varieties]
+    for word in query_words:
+        if word in lower_case_wine_varieties:
+            specified_variety.append(word.upper())
+            if word == "rose":
+                specified_variety.append("RosÃ©")
+        if word == "red" or word == "Red":
+            specified_red =True
+        if word == "White" or word == "white":
+            specified_white = True
+        if word =="Rose" or word == "rose" or word == "Rosé":
+            specified_rose = True
+        if word == "sparkling" or word == "Sparkling":
+            specified_sparkling = True
+
+    if len(specified_variety) > 0:
+        t = tuple(specified_variety)
+        query_sql = "SELECT * FROM wine_data WHERE variety IN {} AND price < {} AND country = '{}'".format(t,price,country)
+    elif specified_red:
+        t = tuple(red_wine_varieties)
+        query_sql = "SELECT * FROM wine_data WHERE variety IN {} AND price < {} AND country = '{}'".format(t,price,country)
+    elif specified_white:
+        t = tuple(white_wine_varieties)
+        query_sql = "SELECT * FROM wine_data WHERE variety IN {} AND price < {} AND country = '{}'".format(t,price,country)
+    elif specified_sparkling:
+        t = tuple(sparkling_wine_varieties)
+        query_sql = "SELECT * FROM wine_data WHERE variety IN {} AND price < {} AND country = '{}'".format(t,price,country)
+    elif specified_rose:
+        t = tuple(rose_wine_varieties)
+        query_sql = "SELECT * FROM wine_data WHERE variety IN {} AND price < {} AND country = '{}'".format(t,price,country)
+    else:
+        query_sql = "SELECT * FROM wine_data WHERE price < {} AND country = '{}'".format(price,country)
+
+    keys = ["country", "description", "designation", "points", "price", "province", "region_1", "region_2", "title", "variety", "winery"]
+    data = mysql_engine.query_selector(query_sql)
+
+    doc_dict = {}
+    for doc in data:
+        doc_text = f"{doc['description']} {doc['designation']} {doc['points']} {doc['price']} {doc['province']} {doc['region_1']} {doc['region_2']} {doc['variety']} {doc['winery']}"
+        doc_tokens = [word for word in TreebankWordTokenizer().tokenize(doc_text) if word not in string.punctuation and not word.isdigit()]
+        doc_dict[doc['title']] = doc_tokens
+
+    return doc_dict
 
 @app.route("/description")
 def description_search():
@@ -360,9 +313,9 @@ def description_search():
     query = request.args.get("description")
     country = request.args.get("country")
     expanded_query = query_expansion(query)
-    inv_index = description_inverted_index(price=price, country=country)
-    titles = boolean_search(expanded_query, inv_index)
-    cos_sim = cosine_sim(expanded_query, titles) 
+    sliced_wines = slice(query,price,country)
+    cos_sim = cosine_sim(expanded_query,sliced_wines) 
+
     query_sql = f"""SELECT * FROM wine_data"""
     keys = ["country", "description", "designation", "points", "price", "province",
             "region_1", "region_2", "title", "variety", "winery"]
@@ -379,6 +332,5 @@ def description_search():
 
         wine['rationale'] = rationale(expanded_query,wine,price=price, variety=variety, country=country)
     return json.dumps(dic)
-
 
 # app.run(debug=True)
